@@ -16,6 +16,7 @@ class VM(BaseMixin, db.Model):
     os = db.Column(db.Text)
     icon = db.Column(db.Text)
     notes = db.Column(db.Text)
+    tags = db.Column(db.Text)  # Comma-separated
 
     apps = db.relationship("AppService", backref="vm", lazy="select")
     storage_pools = db.relationship("Storage", backref="vm", lazy="select")

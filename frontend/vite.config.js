@@ -50,5 +50,7 @@ export default defineConfig({
   },
   build: {
     outDir: "dist",
+    // The map page bundles cytoscape (~575 kB) but is lazy-loaded, so it doesn't slow the first visit
+    chunkSizeWarningLimit: 650,
   },
 });

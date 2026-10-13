@@ -19,7 +19,12 @@ class Hardware(BaseMixin, db.Model):
     location = db.Column(db.Text)
     icon = db.Column(db.Text)
     notes = db.Column(db.Text)
+    tags = db.Column(db.Text)  # Comma-separated
+    purchase_date = db.Column(db.Text)  # ISO date YYYY-MM-DD
+    warranty_until = db.Column(db.Text)  # ISO date YYYY-MM-DD
 
-    vms = db.relationship("VM", backref="hardware", lazy="select")
+    # VMs can't exist without their host (vms.hardware_id is NOT NULL, ondelete=CASCADE): delete them
+    # with it. Apps and storage just lose the link (their FKs are nullable, ondelete=SET NULL).
+    vms = db.relationship("VM", backref="hardware", lazy="select", cascade="all, delete-orphan")
     apps = db.relationship("AppService", backref="hardware", lazy="select")
     storage_pools = db.relationship("Storage", backref="hardware", lazy="select")

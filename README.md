@@ -16,6 +16,14 @@ A self-hosted web application for managing and visualizing home lab infrastructu
 - **Cross-Entity Search** — Filter and search across all inventory types from a single interface
 - **Modal Dialogs** — Clean, accessible modal forms for creating and editing entities
 - **Relationship Tracking** — Automatic and manual relationship mapping between entities
+- **Login** — Single-user login protecting the whole API (set `HUB_PASSWORD`)
+- **Live Status** — Ping/HTTP reachability checks shown in lists, the map and the dashboard
+- **Dashboard** — Inventory counts, items that are down, upcoming warranty/renewal dates and IP usage
+- **Global Search** — Search names, IPs, MACs, tags, notes, shares and documents from the header (Ctrl/Cmd+K)
+- **IP Address Management** — Usage per subnet, next free IP, duplicate and out-of-subnet detection
+- **Tags & Dates** — Free-form tags on every item, purchase/warranty dates on hardware, renewal dates on apps and misc items
+- **Proxmox, ESXi & Docker Import** — Preview and import Proxmox nodes/VMs/LXC, VMware ESXi or vCenter hosts/VMs, and Docker containers
+- **Multi-language** — Spanish and English UI (`frontend/src/locales/*.json`)
 
 ## Tech Stack
 
@@ -70,6 +78,39 @@ docker compose up -d
 The application will be available at `http://localhost:8000`.
 
 Data is persisted in the `./data/` directory.
+
+## Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `HUB_USERNAME` | `admin` | Login username |
+| `HUB_PASSWORD` | *(empty)* | Login password. **When empty, login is disabled and the API is open.** |
+| `SECRET_KEY` | generated | Signs the session cookie. Generated once and stored in `/data/.secret_key` if unset. |
+| `SESSION_COOKIE_SECURE` | `false` | Set to `true` when served over HTTPS |
+| `SESSION_DAYS` | `30` | How long a login lasts |
+| `STATUS_INTERVAL_SECONDS` | `60` | How often reachability is checked in the background (also right after items change) |
+| `STATUS_TIMEOUT_SECONDS` | `2` | Timeout for each ping/HTTP check |
+
+With this repository's `docker-compose.yml`, copy `.env.example` to `.env` and set `HUB_PASSWORD`.
+
+**Status checks:** hardware, VMs and misc items are pinged; apps with a port get an HTTP(S) request (any HTTP answer, even 401/404, counts as online). Items without an IP or hostname are not checked.
+
+**Docker import:** mount `/var/run/docker.sock` (see `docker-compose.yml`) or point it at a remote Docker API. Access to the Docker socket is root-equivalent on the host; prefer a read-only [docker-socket-proxy](https://github.com/Tecnativa/docker-socket-proxy) with `CONTAINERS=1`.
+
+**VMware ESXi / vCenter import:** uses the vSphere API (pyVmomi), so it works with a standalone ESXi host or with vCenter. ESXi has no API tokens: create a local user with the built-in **Read-only** role. The password is only used for the request and never stored. VM IPs require VMware Tools / open-vm-tools. To test without real hardware, run VMware's simulator: `docker run -p 8989:8989 vmware/vcsim -l 0.0.0.0:8989 -esx` (then `VCSIM_HOST=127.0.0.1:8989 pytest tests/test_esxi_vcsim.py`).
+
+**Proxmox import:** create an API token (Datacenter → Permissions → API Tokens) with the `PVEAuditor` role. The token secret is only used for the request and never stored.
+
+## Development checks
+
+```bash
+cd backend && pip install -r requirements-dev.txt && pytest
+cd frontend && npm test               # markdown/XSS unit tests
+cd frontend && npm run check:i18n     # missing translations and hardcoded UI text
+cd frontend && npx playwright install chromium && npm run test:e2e
+                                      # browser tests (desktop + phone, axe accessibility audit);
+                                      # set PYTHON=/path/to/venv/bin/python if backend deps aren't global
+```
 
 ## Upgrading
 

@@ -2,6 +2,8 @@
   import { onMount } from "svelte";
   import { get } from "../../lib/api.js";
   import TreeNode from "./TreeNode.svelte";
+  import NodeDetails from "./NodeDetails.svelte";
+  import { t } from "../../lib/i18n.js";
 
   let treeData = [];
   let loading = true;
@@ -117,11 +119,11 @@
 
 <div class="tree-view">
   {#if loading}
-    <div class="loading">Loading tree...</div>
+    <div class="loading">{$t("map.loadingTree")}</div>
   {:else}
     <div class="tree-controls">
-      <button class="outline secondary small" on:click={expandAll}>Expand All</button>
-      <button class="outline secondary small" on:click={collapseAll}>Collapse All</button>
+      <button class="outline secondary small" on:click={expandAll}>{$t("map.expandAll")}</button>
+      <button class="outline secondary small" on:click={collapseAll}>{$t("map.collapseAll")}</button>
     </div>
     
     <div class="tree-container">
@@ -146,150 +148,9 @@
             {/if}
             {selectedNode.label}
           </h3>
-          <button class="close-btn" on:click={() => selectedNode = null}>×</button>
+          <button class="close-btn" on:click={() => selectedNode = null} aria-label={$t("common.close")}>×</button>
         </div>
-        <div class="info-content">
-          <div class="info-item">
-            <span class="info-label">Type:</span>
-            <span class="info-value">{selectedNode.type}</span>
-          </div>
-          {#if loadingDetails}
-            <div class="info-item">
-              <span class="info-label">Loading...</span>
-            </div>
-          {:else if selectedNodeDetails}
-            {#if selectedNodeDetails.hostname}
-              <div class="info-item">
-                <span class="info-label">Hostname:</span>
-                <span class="info-value">{selectedNodeDetails.hostname}</span>
-              </div>
-            {/if}
-            {#if selectedNodeDetails.ip_address || selectedNodeDetails.ip}
-              <div class="info-item">
-                <span class="info-label">IP Address:</span>
-                <span class="info-value">{selectedNodeDetails.ip_address || selectedNodeDetails.ip}</span>
-              </div>
-            {/if}
-            {#if selectedNodeDetails.mac_address}
-              <div class="info-item">
-                <span class="info-label">MAC Address:</span>
-                <span class="info-value">{selectedNodeDetails.mac_address}</span>
-              </div>
-            {/if}
-            {#if selectedNodeDetails.os}
-              <div class="info-item">
-                <span class="info-label">OS:</span>
-                <span class="info-value">{selectedNodeDetails.os}</span>
-              </div>
-            {/if}
-            {#if selectedNodeDetails.cpu}
-              <div class="info-item">
-                <span class="info-label">CPU:</span>
-                <span class="info-value">{selectedNodeDetails.cpu}</span>
-              </div>
-            {/if}
-            {#if selectedNodeDetails.cpu_cores}
-              <div class="info-item">
-                <span class="info-label">CPU Cores:</span>
-                <span class="info-value">{selectedNodeDetails.cpu_cores}</span>
-              </div>
-            {/if}
-            {#if selectedNodeDetails.ram_gb}
-              <div class="info-item">
-                <span class="info-label">RAM:</span>
-                <span class="info-value">{selectedNodeDetails.ram_gb} GB</span>
-              </div>
-            {/if}
-            {#if selectedNodeDetails.port}
-              <div class="info-item">
-                <span class="info-label">Port:</span>
-                <span class="info-value">{selectedNodeDetails.port}</span>
-              </div>
-            {/if}
-            {#if selectedNode.type === 'apps' && selectedNodeDetails.port && (selectedNodeDetails.hostname || selectedNodeDetails.ip_address)}
-              <div class="info-item">
-                <span class="info-label">Link:</span>
-                <span class="info-value">
-                  <a href="{selectedNodeDetails.https ? 'https' : 'http'}://{selectedNodeDetails.hostname || selectedNodeDetails.ip_address}:{selectedNodeDetails.port}" target="_blank" rel="noopener noreferrer">
-                    {selectedNodeDetails.hostname || selectedNodeDetails.ip_address}:{selectedNodeDetails.port}
-                  </a>
-                </span>
-              </div>
-            {/if}
-            {#if selectedNodeDetails.external_hostname}
-              <div class="info-item">
-                <span class="info-label">External Host:</span>
-                <span class="info-value">{selectedNodeDetails.external_hostname}</span>
-              </div>
-            {/if}
-            {#if selectedNodeDetails.storage_type}
-              <div class="info-item">
-                <span class="info-label">Storage Type:</span>
-                <span class="info-value">{selectedNodeDetails.storage_type}</span>
-              </div>
-            {/if}
-            {#if selectedNodeDetails.raid_type}
-              <div class="info-item">
-                <span class="info-label">RAID:</span>
-                <span class="info-value">{selectedNodeDetails.raid_type}</span>
-              </div>
-            {/if}
-            {#if selectedNodeDetails.raw_space_tb}
-              <div class="info-item">
-                <span class="info-label">Raw Space:</span>
-                <span class="info-value">{selectedNodeDetails.raw_space_tb} TB</span>
-              </div>
-            {/if}
-            {#if selectedNodeDetails.usable_space_tb}
-              <div class="info-item">
-                <span class="info-label">Usable Space:</span>
-                <span class="info-value">{selectedNodeDetails.usable_space_tb} TB</span>
-              </div>
-            {/if}
-            {#if selectedNodeDetails.filesystem}
-              <div class="info-item">
-                <span class="info-label">Filesystem:</span>
-                <span class="info-value">{selectedNodeDetails.filesystem}</span>
-              </div>
-            {/if}
-            {#if selectedNodeDetails.category}
-              <div class="info-item">
-                <span class="info-label">Category:</span>
-                <span class="info-value">{selectedNodeDetails.category}</span>
-              </div>
-            {/if}
-            {#if selectedNodeDetails.description}
-              <div class="info-item">
-                <span class="info-label">Description:</span>
-                <span class="info-value">{selectedNodeDetails.description}</span>
-              </div>
-            {/if}
-          {/if}
-          {#if selectedNode.networkName}
-            <div class="info-item">
-              <span class="info-label">Network:</span>
-              <span class="info-value">
-                <span class="network-indicator" style="background-color: {selectedNode.networkColor}"></span>
-                {selectedNode.networkName}
-              </span>
-            </div>
-          {/if}
-          {#if selectedNodeDetails && selectedNodeDetails.share_type}
-            <div class="info-item">
-              <span class="info-label">Share Type:</span>
-              <span class="info-value">{selectedNodeDetails.share_type}</span>
-            </div>
-          {/if}
-          {#if selectedNodeDetails && selectedNodeDetails.notes}
-            <div class="info-item notes">
-              <span class="info-label">Notes:</span>
-              <span class="info-value">{selectedNodeDetails.notes}</span>
-            </div>
-          {/if}
-        </div>
-        <div class="info-footer">
-          <a href="#/inventory/{selectedNode.type}" class="view-link">View in Inventory →</a>
-        </div>
+        <NodeDetails node={selectedNode} details={selectedNodeDetails} loading={loadingDetails} />
       </div>
     {/if}
   {/if}
@@ -301,7 +162,7 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    background: var(--pico-background-color, #1a1a1a);
+    background: var(--pico-background-color);
   }
   
   .loading {
@@ -309,14 +170,14 @@
     align-items: center;
     justify-content: center;
     height: 100%;
-    color: var(--pico-muted-color, #999);
+    color: var(--pico-muted-color);
   }
   
   .tree-controls {
     display: flex;
     gap: 0.5rem;
     padding: 0.75rem;
-    border-bottom: 1px solid var(--pico-muted-border-color, #333);
+    border-bottom: 1px solid var(--pico-muted-border-color);
   }
   
   .tree-controls button {
@@ -336,10 +197,10 @@
     top: 200px;
     right: 20px;
     width: 320px;
-    background: var(--pico-card-background-color, #1e1e2e);
-    border: 1px solid var(--pico-muted-border-color, #333);
+    background: var(--pico-card-background-color);
+    border: 1px solid var(--pico-muted-border-color);
     border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    box-shadow: var(--hub-shadow);
     z-index: 1000;
     max-height: calc(100vh - 240px);
     display: flex;
@@ -351,7 +212,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 1rem;
-    border-bottom: 1px solid var(--pico-muted-border-color, #333);
+    border-bottom: 1px solid var(--pico-muted-border-color);
   }
   
   .info-header h3 {
@@ -369,7 +230,7 @@
   .close-btn {
     background: none;
     border: none;
-    color: var(--pico-muted-color, #999);
+    color: var(--pico-muted-color);
     font-size: 1.5rem;
     cursor: pointer;
     padding: 0;
@@ -382,65 +243,7 @@
   }
   
   .close-btn:hover {
-    color: var(--pico-primary, #6366f1);
+    color: var(--pico-primary);
   }
   
-  .info-content {
-    padding: 1rem;
-    overflow-y: auto;
-    flex: 1;
-  }
-  
-  .info-item {
-    display: flex;
-    flex-direction: column;
-    margin-bottom: 0.75rem;
-  }
-  
-  .info-item.notes {
-    margin-top: 0.5rem;
-    padding-top: 0.75rem;
-    border-top: 1px solid var(--pico-muted-border-color, #333);
-  }
-  
-  .info-label {
-    font-size: 0.75rem;
-    color: var(--pico-muted-color, #999);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 0.25rem;
-  }
-  
-  .info-value {
-    font-size: 0.9rem;
-    color: #ffffff;
-    word-break: break-word;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-  
-  .network-indicator {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    display: inline-block;
-  }
-  
-  .info-footer {
-    padding: 0.75rem 1rem;
-    border-top: 1px solid var(--pico-muted-border-color, #333);
-    background: rgba(0, 0, 0, 0.2);
-  }
-  
-  .view-link {
-    color: var(--pico-primary, #6366f1);
-    text-decoration: none;
-    font-size: 0.85rem;
-    display: inline-block;
-  }
-  
-  .view-link:hover {
-    text-decoration: underline;
-  }
 </style>

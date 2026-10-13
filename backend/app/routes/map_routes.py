@@ -1,6 +1,8 @@
 from flask import Blueprint, jsonify, request
 from ipaddress import ip_address, ip_network, AddressValueError
 
+from ..utils.icons import icon_url
+
 from ..models import (
     db, Hardware, VM, AppService, Storage, Network, Misc, Share,
     NetworkMember, Relationship, MapLayout, MapEdge,
@@ -74,7 +76,7 @@ def get_graph():
             if hasattr(item, "icon") and item.icon:
                 # Check if it's an image data URL
                 if item.icon.startswith("data:image/"):
-                    node_data["imageIcon"] = item.icon
+                    node_data["imageIcon"] = icon_url(entity_type, item)
                     node_data["label"] = ""  # No text label for images
                 else:
                     # It's an emoji or text icon

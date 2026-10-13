@@ -1,4 +1,6 @@
 <script>
+  import { t } from "../../lib/i18n.js";
+  import TagInput from "../common/TagInput.svelte";
   import { onMount } from "svelte";
   import { get } from "../../lib/api.js";
   import IconPicker from "./IconPicker.svelte";
@@ -63,22 +65,22 @@
 </script>
 
 <div class="grid">
-  <label>Name *<input type="text" bind:value={item.name} required /></label>
+  <label>{$t("fields.name")} *<input type="text" bind:value={item.name} required /></label>
   <label>
-    Runs on
+    {$t("inventory.runsOn")}
     <select bind:value={parentType}>
-      <option value="none">Standalone</option>
-      <option value="hardware">Hardware (bare metal)</option>
-      <option value="vm">VM</option>
+      <option value="none">{$t("inventory.standalone")}</option>
+      <option value="hardware">{$t("inventory.bareMetal")}</option>
+      <option value="vm">{$t("typeSingular.vms")}</option>
     </select>
   </label>
 </div>
 
 {#if parentType === "hardware"}
   <label>
-    Hardware
+    {$t("typeSingular.hardware")}
     <select bind:value={item.hardware_id}>
-      <option value="">Select...</option>
+      <option value="">{$t("common.select")}</option>
       {#each hardwareOptions as hw}
         <option value={hw.id}>{hw.name}</option>
       {/each}
@@ -86,9 +88,9 @@
   </label>
 {:else if parentType === "vm"}
   <label>
-    VM
+    {$t("typeSingular.vms")}
     <select bind:value={item.vm_id}>
-      <option value="">Select...</option>
+      <option value="">{$t("common.select")}</option>
       {#each vmOptions as vm}
         <option value={vm.id}>{vm.name}</option>
       {/each}
@@ -96,18 +98,22 @@
   </label>
 {/if}
 
-<label>Description<input type="text" bind:value={item.description} /></label>
+<label>{$t("fields.description")}<input type="text" bind:value={item.description} /></label>
 <div class="grid">
-  <label>Hostname<input type="text" bind:value={item.hostname} placeholder="Defaults to parent hostname" /></label>
-  <label>IP Address<input type="text" bind:value={item.ip_address} placeholder="Defaults to parent IP" /></label>
+  <label>{$t("fields.hostname")}<input type="text" bind:value={item.hostname} placeholder={$t("inventory.defaultsParentHost")} /></label>
+  <label>{$t("fields.ip_address")}<input type="text" bind:value={item.ip_address} placeholder={$t("inventory.defaultsParentIp")} /></label>
 </div>
 <div class="grid">
-  <label>External Hostname<input type="text" bind:value={item.external_hostname} /></label>
-  <label>Port<input type="number" bind:value={item.port} /></label>
+  <label>{$t("fields.external_hostname")}<input type="text" bind:value={item.external_hostname} /></label>
+  <label>{$t("fields.port")}<input type="number" bind:value={item.port} /></label>
 </div>
 <label>
   <input type="checkbox" bind:checked={item.https} />
-  Use HTTPS
+  {$t("inventory.useHttps")}
 </label>
 <IconPicker bind:value={item.icon} />
-<label>Notes<textarea bind:value={item.notes} rows="3"></textarea></label>
+<label>{$t("fields.renewal_date")}<input type="date" bind:value={item.renewal_date} />
+  <small>{$t("inventory.renewalHint")}</small>
+</label>
+<TagInput bind:value={item.tags} />
+<label>{$t("fields.notes")}<textarea bind:value={item.notes} rows="3"></textarea></label>

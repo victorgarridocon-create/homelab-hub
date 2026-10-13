@@ -1,223 +1,163 @@
 <script>
-  import { createEventDispatcher } from 'svelte';
-  import Modal from '../Modal.svelte';
-  import ShareForm from './ShareForm.svelte';
-  
+  import { createEventDispatcher } from "svelte";
+  import { t } from "../../lib/i18n.js";
+  import { confirmDialog } from "../../lib/dialog.js";
+  import Modal from "../Modal.svelte";
+  import ShareForm from "./ShareForm.svelte";
+
   export let shares = [];
   export let storageId;
-  export let parentIp = '';
-  export let parentHostname = '';
-  
+  export let parentIp = "";
+  export let parentHostname = "";
+
   const dispatch = createEventDispatcher();
-  
+
   let isModalOpen = false;
   let editingShare = null;
-  
-  function handleAddShare() {
-    editingShare = null;
-    isModalOpen = true;
-  }
-  
-  function handleEditShare(share) {
+
+  function openForm(share = null) {
     editingShare = share;
     isModalOpen = true;
   }
-  
+
+  function closeForm() {
+    isModalOpen = false;
+    editingShare = null;
+  }
+
   function handleFormSubmit(event) {
-    dispatch('save', event.detail);
-    isModalOpen = false;
-    editingShare = null;
+    dispatch("save", event.detail);
+    closeForm();
   }
-  
-  function handleModalClose() {
-    isModalOpen = false;
-    editingShare = null;
-  }
-  
-  function handleDeleteShare(share) {
-    if (confirm(`Are you sure you want to delete the share "${share.name}"?`)) {
-      dispatch('delete', share);
-    }
+
+  async function handleDeleteShare(share) {
+    const ok = await confirmDialog($t("shares.confirmDelete", { name: share.name }), {
+      confirmLabel: $t("common.delete"),
+      danger: true,
+    });
+    if (ok) dispatch("delete", share);
   }
 </script>
 
-<div class="shares-section">
+<section class="shares-section">
   <div class="shares-header">
-    <h3>Shares</h3>
-    <button class="btn-add" on:click={handleAddShare}>+ Add Share</button>
+    <h3>{$t("types.shares")}</h3>
+    <button type="button" class="small" on:click={() => openForm()}>+ {$t("shares.add")}</button>
   </div>
-  
+
   {#if shares.length > 0}
-    <div class="shares-list">
-      {#each shares as share}
-        <div class="share-item">
+    <ul class="shares-list">
+      {#each shares as share (share.id)}
+        <li class="share-item">
           <div class="share-info">
             <div class="share-name">{share.name}</div>
             <div class="share-details">
-              <span class="share-type">{share.share_type}</span>
+              <span class="badge info">{share.share_type === "Other" ? $t("shares.other") : share.share_type}</span>
               {#if share.hostname}
-                <span class="share-detail">Host: {share.hostname}</span>
+                <span class="muted">{$t("fields.hostname")}: {share.hostname}</span>
               {/if}
               {#if share.ip}
-                <span class="share-detail">IP: {share.ip}</span>
+                <span class="muted">IP: {share.ip}</span>
               {/if}
             </div>
             {#if share.notes}
-              <div class="share-notes">{share.notes}</div>
+              <div class="share-notes muted">{share.notes}</div>
             {/if}
           </div>
           <div class="share-actions">
-            <button class="btn-icon" on:click={() => handleEditShare(share)} title="Edit">
-              ✏️
+            <button type="button" class="outline secondary small" on:click={() => openForm(share)}>
+              {$t("common.edit")}
             </button>
-            <button class="btn-icon btn-delete" on:click={() => handleDeleteShare(share)} title="Delete">
-              🗑️
+            <button type="button" class="outline danger small" on:click={() => handleDeleteShare(share)}>
+              {$t("common.delete")}
             </button>
           </div>
-        </div>
+        </li>
       {/each}
-    </div>
+    </ul>
   {:else}
-    <div class="no-shares">
-      No shares configured. Click "Add Share" to create one.
-    </div>
+    <p class="muted">{$t("shares.empty")}</p>
   {/if}
-</div>
+</section>
 
-<Modal 
-  isOpen={isModalOpen} 
-  title={editingShare ? 'Edit Share' : 'Add Share'}
-  on:close={handleModalClose}
+<Modal
+  isOpen={isModalOpen}
+  title={editingShare ? $t("shares.editTitle") : $t("shares.addTitle")}
+  on:close={closeForm}
 >
-  <ShareForm 
-    share={editingShare} 
-    storageId={storageId}
-    defaultIp={parentIp}
-    defaultHostname={parentHostname}
-    on:submit={handleFormSubmit}
-    on:cancel={handleModalClose}
-  />
+  {#key editingShare}
+    <ShareForm
+      share={editingShare}
+      {storageId}
+      defaultIp={parentIp}
+      defaultHostname={parentHostname}
+      on:submit={handleFormSubmit}
+      on:cancel={closeForm}
+    />
+  {/key}
 </Modal>
 
 <style>
   .shares-section {
     margin-top: 2rem;
     padding-top: 1.5rem;
-    border-top: 1px solid #444;
+    border-top: 1px solid var(--hub-border);
+    max-width: 700px;
   }
-  
   .shares-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 1rem;
   }
-  
   .shares-header h3 {
     margin: 0;
-    color: #fff;
   }
-  
-  .btn-add {
-    padding: 0.5rem 1rem;
-    background: #4a9eff;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.9rem;
-  }
-  
-  .btn-add:hover {
-    background: #3a8eef;
-  }
-  
   .shares-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 0.6rem;
   }
-  
   .share-item {
+    list-style: none;
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    padding: 0.75rem;
-    background: #2a2a2a;
-    border-radius: 4px;
-    border: 1px solid #444;
+    gap: 1rem;
+    padding: 0.8rem 1rem;
+    background: var(--hub-surface-2);
+    border: 1px solid var(--hub-border);
+    border-radius: 6px;
   }
-  
   .share-info {
     flex: 1;
+    min-width: 0;
   }
-  
   .share-name {
-    font-weight: 500;
-    color: #fff;
-    margin-bottom: 0.25rem;
+    font-weight: 600;
+    margin-bottom: 0.3rem;
   }
-  
   .share-details {
     display: flex;
-    gap: 0.75rem;
     flex-wrap: wrap;
-    font-size: 0.85rem;
-    color: #999;
-    margin-bottom: 0.25rem;
+    align-items: center;
+    gap: 0.4rem 0.8rem;
   }
-  
-  .share-type {
-    background: #4a9eff;
-    color: white;
-    padding: 0.15rem 0.5rem;
-    border-radius: 3px;
-    font-size: 0.75rem;
-    font-weight: 500;
-  }
-  
-  .share-detail {
-    color: #ccc;
-  }
-  
   .share-notes {
-    font-size: 0.85rem;
-    color: #999;
-    margin-top: 0.5rem;
+    margin-top: 0.4rem;
     font-style: italic;
   }
-  
   .share-actions {
     display: flex;
-    gap: 0.25rem;
+    gap: 0.4rem;
+    flex-shrink: 0;
   }
-  
-  .btn-icon {
-    padding: 0.25rem 0.5rem;
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    font-size: 1rem;
-    opacity: 0.7;
-  }
-  
-  .btn-icon:hover {
-    opacity: 1;
-  }
-  
-  .btn-delete {
-    background: rgba(220, 53, 69, 0.15);
-    border-radius: 3px;
-  }
-  
-  .btn-delete:hover {
-    background: rgba(220, 53, 69, 0.25);
-  }
-  
-  .no-shares {
-    padding: 2rem;
-    text-align: center;
-    color: #999;
-    font-style: italic;
+  @media (max-width: 600px) {
+    .share-item {
+      flex-direction: column;
+    }
   }
 </style>

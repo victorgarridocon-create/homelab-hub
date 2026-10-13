@@ -3,6 +3,8 @@ from ..models import *
 from ..models.base import db
 import json
 
+from ..utils.icons import icon_url, list_dict
+
 bp = Blueprint('inventory', __name__, url_prefix='/inventory')
 
 ENTITY_MAP = {
@@ -20,27 +22,61 @@ def get_all_inventory():
     """Return all inventory items across all types."""
     result = {}
     for entity_type, model in ENTITY_MAP.items():
-        result[entity_type] = [item.to_dict() for item in model.query.all()]
+        result[entity_type] = [list_dict(entity_type, item) for item in model.query.all()]
     return jsonify(data=result)
+
+
+SEARCH_LIMIT = 50
+
+
+def _text_columns(model):
+    return [c for c in model.__table__.columns if isinstance(c.type, db.Text) and c.name != "icon"]
+
+
+def _snippet(text, q, width=60):
+    """Short excerpt of text around the first match of q."""
+    text = " ".join(str(text).split())
+    pos = text.lower().find(q.lower())
+    if pos < 0:
+        return text[:width]
+    start = max(0, pos - width // 2)
+    end = min(len(text), pos + len(q) + width // 2)
+    return ("…" if start else "") + text[start:end] + ("…" if end < len(text) else "")
 
 
 @bp.route("/search", methods=["GET"])
 def search_inventory():
-    """Search across all entity types by name."""
+    """Search every text field (name, IPs, hostnames, MACs, tags, notes...) across all types."""
     q = request.args.get("q", "").strip()
     if not q:
         return jsonify(data=[], count=0)
 
-    results = []
     pattern = f"%{q}%"
-    for entity_type, model in ENTITY_MAP.items():
-        matches = model.query.filter(model.name.ilike(pattern)).all()
+    results = []
+    sources = list(ENTITY_MAP.items()) + [("shares", Share), ("documents", Document)]
+    for entity_type, model in sources:
+        columns = _text_columns(model)
+        matches = model.query.filter(db.or_(*[c.ilike(pattern) for c in columns])).limit(SEARCH_LIMIT).all()
         for item in matches:
-            d = item.to_dict()
-            d["_type"] = entity_type
-            results.append(d)
+            field, value = next(
+                ((c.name, getattr(item, c.name)) for c in columns
+                 if getattr(item, c.name) and q.lower() in str(getattr(item, c.name)).lower()),
+                ("name", ""),
+            )
+            results.append({
+                "_type": entity_type,
+                "id": item.id,
+                "name": getattr(item, "name", None) or getattr(item, "title", ""),
+                "icon": icon_url(entity_type, item),
+                "storage_id": getattr(item, "storage_id", None),
+                "match_field": field,
+                "match": _snippet(value, q),
+            })
 
-    return jsonify(data=results, count=len(results))
+    # Exact name matches first, then prefix matches, then the rest
+    ql = q.lower()
+    results.sort(key=lambda r: (r["name"].lower() != ql, not r["name"].lower().startswith(ql), r["name"].lower()))
+    return jsonify(data=results[:SEARCH_LIMIT], count=len(results))
 
 
 @bp.route('/export', methods=['GET'])

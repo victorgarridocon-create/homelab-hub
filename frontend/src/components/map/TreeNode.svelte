@@ -34,7 +34,7 @@
   
   $: isExpanded = expandedNodes.has(node.id);
   $: hasChildren = node.children && node.children.length > 0;
-  $: borderColor = node.networkColor || (node.networkName ? (TYPE_COLORS[node.type] || '#999') : '#ffffff');
+  $: borderColor = node.networkColor || (node.networkName ? (TYPE_COLORS[node.type] || '#999') : 'var(--hub-border)');
 </script>
 
 <div class="tree-node" style="margin-left: {level * 1.5}rem;">
@@ -104,7 +104,7 @@
   .expand-button {
     background: none;
     border: none;
-    color: var(--pico-muted-color, #999);
+    color: var(--pico-muted-color);
     cursor: pointer;
     padding: 0.25rem;
     font-size: 0.7rem;
@@ -117,7 +117,7 @@
   }
   
   .expand-button:hover {
-    color: var(--pico-primary, #6366f1);
+    color: var(--pico-primary);
   }
   
   .expand-spacer {
@@ -130,7 +130,7 @@
     align-items: center;
     gap: 0.75rem;
     padding: 0.75rem 1rem;
-    background: var(--pico-card-background-color, #1e1e2e);
+    background: var(--hub-surface);
     border: 2px solid;
     border-radius: 6px;
     flex: 1;
@@ -159,21 +159,21 @@
   
   .node-label {
     font-weight: 500;
-    color: #ffffff;
+    color: var(--pico-color);
     font-size: 1rem;
   }
   
   .node-type {
     font-size: 0.85rem;
-    color: var(--pico-muted-color, #999);
+    color: var(--pico-muted-color);
     font-style: italic;
   }
   
   .node-network {
     font-size: 0.8rem;
-    color: var(--pico-muted-color, #aaa);
+    color: var(--pico-muted-color);
     padding: 0.2rem 0.5rem;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--hub-surface-2);
     border-radius: 4px;
     margin-left: auto;
   }

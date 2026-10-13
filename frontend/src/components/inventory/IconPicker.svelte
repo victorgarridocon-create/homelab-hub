@@ -1,5 +1,28 @@
 <script>
-  import { onMount } from "svelte";
+  import { t } from "../../lib/i18n.js";
+  import { addToast } from "../../lib/stores.js";
+
+  // The GitHub API allows 60 unauthenticated requests/hour: cache the icon list for a day
+  const CACHE_KEY = "homelab-hub.dashboard-icons";
+  const CACHE_MS = 24 * 60 * 60 * 1000;
+
+  function readCache() {
+    try {
+      const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
+      if (cached && Date.now() - cached.savedAt < CACHE_MS && cached.icons?.length) return cached.icons;
+    } catch {
+      // ignore
+    }
+    return null;
+  }
+
+  function writeCache(icons) {
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify({ savedAt: Date.now(), icons }));
+    } catch {
+      // Storage full or unavailable: the list is simply fetched again next time
+    }
+  }
   
   export let value = "";
 
@@ -12,7 +35,12 @@
   // Fetch available icons from GitHub using Git Trees API
   async function loadDashboardIcons() {
     if (dashboardIcons.length > 0) return; // Already loaded
-    
+    const cached = readCache();
+    if (cached) {
+      dashboardIcons = cached;
+      return;
+    }
+
     loadingIcons = true;
     try {
       // First get the default branch
@@ -27,6 +55,7 @@
         `https://api.github.com/repos/homarr-labs/dashboard-icons/git/trees/${defaultBranch}?recursive=1`
       );
       const tree = await treeResponse.json();
+      if (!treeResponse.ok || !Array.isArray(tree.tree)) throw new Error(tree.message || treeResponse.statusText);
       
       // Filter for PNG files in the png directory
       dashboardIcons = tree.tree
@@ -36,8 +65,9 @@
           url: `https://raw.githubusercontent.com/homarr-labs/dashboard-icons/${defaultBranch}/${item.path}`
         }))
         .sort((a, b) => a.name.localeCompare(b.name));
+      writeCache(dashboardIcons);
     } catch (e) {
-      console.error('Failed to load dashboard icons:', e);
+      addToast($t("icon.loadFailed", { error: e.message }), "error");
     }
     loadingIcons = false;
   }
@@ -93,8 +123,7 @@
       };
       reader.readAsDataURL(blob);
     } catch (e) {
-      console.error('Failed to load icon:', e);
-      alert('Failed to load icon');
+      addToast($t("icon.loadFailed", { error: e.message }), "error");
     }
   }
 
@@ -104,13 +133,13 @@
 
     // Validate file type
     if (!file.type.startsWith("image/")) {
-      alert("Please select an image file");
+      addToast($t("icon.selectImage"), "error");
       return;
     }
 
     // Validate file size (max 1MB)
     if (file.size > 1024 * 1024) {
-      alert("Image must be smaller than 1MB");
+      addToast($t("icon.tooLarge"), "error");
       return;
     }
 
@@ -175,7 +204,7 @@
 </script>
 
 <div class="icon-picker">
-  <div class="icon-label">Icon</div>
+  <div class="icon-label">{$t("fields.icon")}</div>
 
   <div class="tab-buttons">
     <button 
@@ -183,29 +212,29 @@
       class={activeTab === "emoji" ? "active" : "secondary outline"}
       on:click={() => activeTab = "emoji"}
     >
-      Emoji/Text
+      {$t("icon.emojiTab")}
     </button>
     <button 
       type="button" 
       class={activeTab === "browse" ? "active" : "secondary outline"}
       on:click={() => activeTab = "browse"}
     >
-      Browse Icons
+      {$t("icon.browseTab")}
     </button>
     <button 
       type="button" 
       class={activeTab === "upload" ? "active" : "secondary outline"}
       on:click={() => activeTab = "upload"}
     >
-      Upload Custom
+      {$t("icon.uploadTab")}
     </button>
   </div>
 
   {#if activeTab === "emoji"}
     <div class="tab-content">
-      <input type="text" bind:value placeholder="Enter emoji or text (e.g., 🚀)" />
+      <input type="text" bind:value placeholder={$t("icon.emojiPlaceholder")} />
       {#if value && !isImage}
-        <button type="button" class="secondary outline" on:click={clearIcon}>Clear</button>
+        <button type="button" class="secondary outline" on:click={clearIcon}>{$t("common.clear")}</button>
       {/if}
     </div>
   {/if}
@@ -215,15 +244,15 @@
       <input 
         type="text" 
         bind:value={searchQuery} 
-        placeholder="Search icons..." 
+        placeholder={$t("icon.searchPlaceholder")} 
       />
       
       {#if loadingIcons}
-        <p>Loading icons...</p>
+        <p>{$t("icon.loading")}</p>
       {:else if dashboardIcons.length === 0}
-        <p>No icons loaded</p>
+        <p>{$t("icon.noneLoaded")}</p>
       {:else}
-        <p class="result-count">{dashboardIcons.length} icons available. {searchQuery ? `Showing ${Math.min(50, filteredIcons.length)} of ${filteredIcons.length} matching.` : 'Use search to find icons.'}</p>
+        <p class="result-count">{$t("icon.available", { count: dashboardIcons.length })} {searchQuery ? $t("icon.showing", { shown: Math.min(50, filteredIcons.length), total: filteredIcons.length }) : $t("icon.useSearch")}</p>
         <div class="icon-grid">
           {#each filteredIcons.slice(0, 50) as icon}
             <button
@@ -238,7 +267,7 @@
           {/each}
         </div>
         {#if filteredIcons.length === 0}
-          <p>No icons match "{searchQuery}"</p>
+          <p>{$t("icon.noMatch", { query: searchQuery })}</p>
         {/if}
       {/if}
     </div>
@@ -247,9 +276,9 @@
   {#if activeTab === "upload"}
     <div class="tab-content">
       <button type="button" class="secondary" on:click={() => fileInput.click()}>
-        Choose File
+        {$t("icon.chooseFile")}
       </button>
-      <p class="help-text">Max size: 1MB. Images will be resized to 128x128px.</p>
+      <p class="help-text">{$t("icon.uploadHelp")}</p>
       <input
         bind:this={fileInput}
         type="file"
@@ -262,13 +291,13 @@
 
   {#if value}
     <div class="icon-preview">
-      <strong>Current Icon:</strong>
+      <strong>{$t("icon.current")}:</strong>
       {#if isImage}
-        <img src={value} alt="Icon preview" />
+        <img src={value} alt={$t("icon.preview")} />
       {:else}
         <span class="emoji-preview">{value}</span>
       {/if}
-      <button type="button" class="secondary outline" on:click={clearIcon}>Clear</button>
+      <button type="button" class="secondary outline" on:click={clearIcon}>{$t("common.clear")}</button>
     </div>
   {/if}
 </div>

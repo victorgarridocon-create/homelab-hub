@@ -16,6 +16,8 @@ class AppService(BaseMixin, db.Model):
     https = db.Column(db.Boolean, default=False)
     icon = db.Column(db.Text)
     notes = db.Column(db.Text)
+    tags = db.Column(db.Text)  # Comma-separated
+    renewal_date = db.Column(db.Text)  # ISO date: domain/certificate renewal
 
     __table_args__ = (
         db.CheckConstraint(

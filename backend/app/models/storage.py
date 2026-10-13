@@ -16,6 +16,7 @@ class Storage(BaseMixin, db.Model):
     filesystem = db.Column(db.Text)
     icon = db.Column(db.Text)
     notes = db.Column(db.Text)
+    tags = db.Column(db.Text)  # Comma-separated
 
     # Relationship to shares
     shares = db.relationship("Share", back_populates="storage", cascade="all, delete-orphan")

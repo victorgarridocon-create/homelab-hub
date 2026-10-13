@@ -1,86 +1,40 @@
 <script>
   import Sidebar from "./Sidebar.svelte";
+  import GlobalSearch from "./GlobalSearch.svelte";
+  import { t } from "../lib/i18n.js";
 
-  // In production (Docker), use relative URLs. In dev, use explicit URL for proxy.
-  const API_BASE = import.meta.env.PROD ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:5001');
-
-  async function exportDatabase() {
-    try {
-      const response = await fetch(`${API_BASE}/inventory/export`, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      // Create a blob and download
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'homelab-export.json';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Export failed:', error);
-      alert('Export failed: ' + error.message);
-    }
-  }
-
-  async function importDatabase(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    
-    try {
-      const text = await file.text();
-      const data = JSON.parse(text);
-      
-      const response = await fetch(`${API_BASE}/inventory/import`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data)
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      alert('Import completed successfully!');
-      window.location.reload();
-    } catch (error) {
-      console.error('Import failed:', error);
-      alert('Import failed: ' + error.message);
-    }
-  }
-
-  function triggerImport() {
-    document.getElementById('import-file-input').click();
-  }
+  let menuOpen = false;
 </script>
 
+<svelte:window on:keydown={(e) => e.key === "Escape" && menuOpen && (menuOpen = false)} />
+
+<a class="skip-link" href="#main-content">{$t("nav.skipToContent")}</a>
+
 <div class="layout">
-  <header class="header">
-    <h1>Home Lab Hub</h1>
-    <div class="header-actions">
-      <button class="btn btn-primary" on:click={exportDatabase}>Export Data</button>
-      <button class="btn btn-secondary" on:click={triggerImport}>Import Data</button>
-      <input id="import-file-input" type="file" accept=".json" style="display: none;" on:change={importDatabase} />
-    </div>
-  </header>
-  
-  <div class="content">
-    <Sidebar />
-    <main class="main">
+  <Sidebar open={menuOpen} on:close={() => (menuOpen = false)} />
+  {#if menuOpen}
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <!-- svelte-ignore a11y-no-static-element-interactions -->
+    <div class="drawer-backdrop" on:click={() => (menuOpen = false)}></div>
+  {/if}
+
+  <div class="page">
+    <header class="header">
+      <button
+        type="button"
+        class="menu-btn"
+        aria-label={$t("nav.menu")}
+        aria-expanded={menuOpen}
+        aria-controls="sidebar"
+        on:click={() => (menuOpen = !menuOpen)}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <a class="brand" href="#/">Home Lab Hub</a>
+      <GlobalSearch />
+    </header>
+
+    <main class="main" id="main-content" tabindex="-1">
       <slot />
     </main>
   </div>
@@ -89,69 +43,102 @@
 <style>
   .layout {
     display: flex;
-    flex-direction: column;
     min-height: 100vh;
   }
-  
-  .header {
-    background-color: #1a1d23;
-    color: white;
-    padding: 1rem 1.5rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  
-  .header h1 {
-    margin: 0;
-    font-size: 1.5rem;
-  }
-  
-  .header-actions {
-    display: flex;
-    gap: 0.5rem;
-  }
-  
-  .btn {
-    display: inline-block;
-    padding: 0.5rem 1rem;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    font-weight: 500;
-    line-height: 1.5;
-    text-align: center;
-    vertical-align: middle;
-    box-sizing: border-box;
-  }
-  
-  .btn-primary {
-    background-color: #007bff;
-    color: white;
-  }
-  
-  .btn-primary:hover {
-    background-color: #0056b3;
-  }
-  
-  .btn-secondary {
-    background-color: #6c757d;
-    color: white;
-  }
-  
-  .btn-secondary:hover {
-    background-color: #545b62;
-  }
-  
-  .content {
-    display: flex;
+
+  .page {
     flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
   }
-  
+
+  .header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.6rem 1.5rem;
+    background: var(--hub-header-bg);
+    color: var(--hub-header-color);
+    border-bottom: 1px solid var(--hub-border);
+  }
+
+  .brand {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: inherit;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .menu-btn {
+    display: none;
+    background: transparent;
+    border: none;
+    color: inherit;
+    padding: 0.3rem;
+    margin: 0;
+    width: auto;
+    line-height: 0;
+  }
+
   .main {
     flex: 1;
     padding: 1.5rem;
-    overflow-y: auto;
+    min-width: 0;
+  }
+  .main:focus {
+    outline: none;
+  }
+
+  .skip-link {
+    position: absolute;
+    left: -9999px;
+    top: 0.5rem;
+    z-index: 10000;
+    padding: 0.5rem 1rem;
+    background: var(--pico-primary-background);
+    color: var(--pico-primary-inverse);
+    border-radius: 4px;
+  }
+  .skip-link:focus {
+    left: 0.5rem;
+  }
+
+  .drawer-backdrop {
+    display: none;
+  }
+
+  @media (max-width: 900px) {
+    .menu-btn {
+      display: inline-flex;
+    }
+    .drawer-backdrop {
+      display: block;
+      position: fixed;
+      inset: 0;
+      z-index: 7999;
+      background: var(--hub-backdrop);
+    }
+    .header {
+      flex-wrap: wrap;
+      gap: 0.5rem 0.75rem;
+      padding: 0.5rem 1rem;
+    }
+    .main {
+      padding: 1rem;
+    }
+  }
+
+  @media (max-width: 600px) {
+    /* Search gets its own full-width row */
+    .header :global(.global-search) {
+      order: 3;
+      flex-basis: 100%;
+      max-width: none;
+    }
   }
 </style>

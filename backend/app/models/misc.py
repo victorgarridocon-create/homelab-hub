@@ -13,3 +13,5 @@ class Misc(BaseMixin, db.Model):
     properties = db.Column(db.Text)  # JSON blob for arbitrary key-value pairs
     icon = db.Column(db.Text)
     notes = db.Column(db.Text)
+    tags = db.Column(db.Text)  # Comma-separated
+    renewal_date = db.Column(db.Text)  # ISO date: domain/certificate/licence renewal

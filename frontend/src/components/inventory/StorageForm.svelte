@@ -1,4 +1,6 @@
 <script>
+  import { t } from "../../lib/i18n.js";
+  import TagInput from "../common/TagInput.svelte";
   import { onMount } from "svelte";
   import { get } from "../../lib/api.js";
   import IconPicker from "./IconPicker.svelte";
@@ -34,22 +36,22 @@
 </script>
 
 <div class="grid">
-  <label>Name *<input type="text" bind:value={item.name} required /></label>
+  <label>{$t("fields.name")} *<input type="text" bind:value={item.name} required /></label>
   <label>
-    Runs on
+    {$t("inventory.runsOn")}
     <select bind:value={parentType}>
-      <option value="none">Standalone</option>
-      <option value="hardware">Hardware</option>
-      <option value="vm">VM</option>
+      <option value="none">{$t("inventory.standalone")}</option>
+      <option value="hardware">{$t("typeSingular.hardware")}</option>
+      <option value="vm">{$t("typeSingular.vms")}</option>
     </select>
   </label>
 </div>
 
 {#if parentType === "hardware"}
   <label>
-    Hardware
+    {$t("typeSingular.hardware")}
     <select bind:value={item.hardware_id}>
-      <option value="">Select...</option>
+      <option value="">{$t("common.select")}</option>
       {#each hardwareOptions as hw}
         <option value={hw.id}>{hw.name}</option>
       {/each}
@@ -57,9 +59,9 @@
   </label>
 {:else if parentType === "vm"}
   <label>
-    VM
+    {$t("typeSingular.vms")}
     <select bind:value={item.vm_id}>
-      <option value="">Select...</option>
+      <option value="">{$t("common.select")}</option>
       {#each vmOptions as vm}
         <option value={vm.id}>{vm.name}</option>
       {/each}
@@ -68,14 +70,15 @@
 {/if}
 
 <div class="grid">
-  <label>Storage Type<input type="text" bind:value={item.storage_type} placeholder="HDD, SSD, NVMe..." /></label>
-  <label>RAID Type<input type="text" bind:value={item.raid_type} placeholder="RAID-Z2, RAID 10..." /></label>
+  <label>{$t("fields.storage_type")}<input type="text" bind:value={item.storage_type} placeholder="HDD, SSD, NVMe..." /></label>
+  <label>{$t("fields.raid_type")}<input type="text" bind:value={item.raid_type} placeholder="RAID-Z2, RAID 10..." /></label>
 </div>
 <div class="grid">
-  <label>Drive Count<input type="number" bind:value={item.drive_count} /></label>
-  <label>Raw Space (TB)<input type="number" step="0.01" bind:value={item.raw_space_tb} /></label>
-  <label>Usable Space (TB)<input type="number" step="0.01" bind:value={item.usable_space_tb} /></label>
+  <label>{$t("fields.drive_count")}<input type="number" bind:value={item.drive_count} /></label>
+  <label>{$t("fields.raw_space_tb")}<input type="number" step="0.01" bind:value={item.raw_space_tb} /></label>
+  <label>{$t("fields.usable_space_tb")}<input type="number" step="0.01" bind:value={item.usable_space_tb} /></label>
 </div>
-<label>Filesystem<input type="text" bind:value={item.filesystem} placeholder="ZFS, EXT4, BTRFS..." /></label>
+<label>{$t("fields.filesystem")}<input type="text" bind:value={item.filesystem} placeholder="ZFS, EXT4, BTRFS..." /></label>
 <IconPicker bind:value={item.icon} />
-<label>Notes<textarea bind:value={item.notes} rows="3"></textarea></label>
+<TagInput bind:value={item.tags} />
+<label>{$t("fields.notes")}<textarea bind:value={item.notes} rows="3"></textarea></label>

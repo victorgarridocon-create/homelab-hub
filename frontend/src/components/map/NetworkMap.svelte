@@ -4,6 +4,9 @@
   import dagre from "cytoscape-dagre";
   import { get, put } from "../../lib/api.js";
   import { addToast } from "../../lib/stores.js";
+  import { statusMap } from "../../lib/status.js";
+  import { t } from "../../lib/i18n.js";
+  import NodeDetails from "./NodeDetails.svelte";
 
   cytoscape.use(dagre);
 
@@ -16,6 +19,9 @@
   let loadingDetails = false;
   let tooltip = { visible: false, text: "", x: 0, y: 0 };
   
+  // On phones the networks/filters panel would cover the map: it opens on demand
+  let panelOpen = false;
+
   // Visibility toggles for each node type
   let showHardware = true;
   let showVms = true;
@@ -43,6 +49,8 @@
     selectedNodeDetails = null;
     loadingDetails = false;
   }
+
+  const EDGE_LABELS = ["hosts", "runs", "storage", "share"];
 
   const NODE_STYLES = {
     hardware:  { shape: "hexagon",          color: "#C5E1F5" },  // Pastel blue
@@ -76,7 +84,13 @@
 
       cy = cytoscape({
         container,
-        elements: { nodes, edges: graphRes.edges },
+        elements: {
+          nodes,
+          // Relationship labels come from the backend in English ("hosts", "runs"...): translate the known ones
+          edges: graphRes.edges.map((e) =>
+            EDGE_LABELS.includes(e.data.label) ? { ...e, data: { ...e.data, label: $t(`map.edges.${e.data.label}`) } } : e
+          ),
+        },
         style: [
           {
             selector: "node",
@@ -140,6 +154,15 @@
               "border-color": "data(networkColor)",
               "border-style": "solid",
             },
+          },
+          // Reachability overrides the network colour on the border
+          {
+            selector: 'node[status="up"]',
+            style: { "border-width": 3, "border-color": "#22c55e" },
+          },
+          {
+            selector: 'node[status="down"]',
+            style: { "border-width": 4, "border-color": "#ef4444", "border-style": "double" },
           },
           {
             selector: "edge",
@@ -215,9 +238,18 @@
         tooltip.visible = false;
       });
     } catch (e) {
-      addToast("Failed to load map: " + e.message, "error");
+      addToast($t("map.loadFailed", { error: e.message }), "error");
     }
   });
+
+  // Push reachability into node data so the status styles apply
+  $: if (cy) {
+    cy.nodes().forEach((node) => {
+      const info = $statusMap[node.id()];
+      if (info) node.data("status", info.status);
+      else node.removeData("status");
+    });
+  }
 
   // Reactive statement to hide/show nodes by type
   $: if (cy) {
@@ -383,155 +415,17 @@
         {/if}
         {selectedNode.rawName || selectedNode.label}
       </h3>
-      <button class="close-btn" on:click={() => selectedNode = null}>×</button>
+      <button class="close-btn" on:click={() => selectedNode = null} aria-label={$t("common.close")}>×</button>
     </div>
-    <div class="info-content">
-      <div class="info-item">
-        <span class="info-label">Type:</span>
-        <span class="info-value">{selectedNode.type}</span>
-      </div>
-      {#if loadingDetails}
-        <div class="info-item">
-          <span class="info-label">Loading...</span>
-        </div>
-      {:else if selectedNodeDetails}
-        {#if selectedNodeDetails.hostname}
-          <div class="info-item">
-            <span class="info-label">Hostname:</span>
-            <span class="info-value">{selectedNodeDetails.hostname}</span>
-          </div>
-        {/if}
-        {#if selectedNodeDetails.ip_address || selectedNodeDetails.ip}
-          <div class="info-item">
-            <span class="info-label">IP Address:</span>
-            <span class="info-value">{selectedNodeDetails.ip_address || selectedNodeDetails.ip}</span>
-          </div>
-        {/if}
-        {#if selectedNodeDetails.mac_address}
-          <div class="info-item">
-            <span class="info-label">MAC Address:</span>
-            <span class="info-value">{selectedNodeDetails.mac_address}</span>
-          </div>
-        {/if}
-        {#if selectedNodeDetails.os}
-          <div class="info-item">
-            <span class="info-label">OS:</span>
-            <span class="info-value">{selectedNodeDetails.os}</span>
-          </div>
-        {/if}
-        {#if selectedNodeDetails.cpu}
-          <div class="info-item">
-            <span class="info-label">CPU:</span>
-            <span class="info-value">{selectedNodeDetails.cpu}</span>
-          </div>
-        {/if}
-        {#if selectedNodeDetails.cpu_cores}
-          <div class="info-item">
-            <span class="info-label">CPU Cores:</span>
-            <span class="info-value">{selectedNodeDetails.cpu_cores}</span>
-          </div>
-        {/if}
-        {#if selectedNodeDetails.ram_gb}
-          <div class="info-item">
-            <span class="info-label">RAM:</span>
-            <span class="info-value">{selectedNodeDetails.ram_gb} GB</span>
-          </div>
-        {/if}
-        {#if selectedNodeDetails.port}
-          <div class="info-item">
-            <span class="info-label">Port:</span>
-            <span class="info-value">{selectedNodeDetails.port}</span>
-          </div>
-        {/if}
-        {#if selectedNode.type === 'apps' && selectedNodeDetails.port && (selectedNodeDetails.hostname || selectedNodeDetails.ip_address)}
-          <div class="info-item">
-            <span class="info-label">Link:</span>
-            <span class="info-value">
-              <a href="{selectedNodeDetails.https ? 'https' : 'http'}://{selectedNodeDetails.hostname || selectedNodeDetails.ip_address}:{selectedNodeDetails.port}" target="_blank" rel="noopener noreferrer">
-                {selectedNodeDetails.hostname || selectedNodeDetails.ip_address}:{selectedNodeDetails.port}
-              </a>
-            </span>
-          </div>
-        {/if}
-        {#if selectedNodeDetails.external_hostname}
-          <div class="info-item">
-            <span class="info-label">External Host:</span>
-            <span class="info-value">{selectedNodeDetails.external_hostname}</span>
-          </div>
-        {/if}
-        {#if selectedNodeDetails.storage_type}
-          <div class="info-item">
-            <span class="info-label">Storage Type:</span>
-            <span class="info-value">{selectedNodeDetails.storage_type}</span>
-          </div>
-        {/if}
-        {#if selectedNodeDetails.raid_type}
-          <div class="info-item">
-            <span class="info-label">RAID:</span>
-            <span class="info-value">{selectedNodeDetails.raid_type}</span>
-          </div>
-        {/if}
-        {#if selectedNodeDetails.raw_space_tb}
-          <div class="info-item">
-            <span class="info-label">Raw Space:</span>
-            <span class="info-value">{selectedNodeDetails.raw_space_tb} TB</span>
-          </div>
-        {/if}
-        {#if selectedNodeDetails.usable_space_tb}
-          <div class="info-item">
-            <span class="info-label">Usable Space:</span>
-            <span class="info-value">{selectedNodeDetails.usable_space_tb} TB</span>
-          </div>
-        {/if}
-        {#if selectedNodeDetails.filesystem}
-          <div class="info-item">
-            <span class="info-label">Filesystem:</span>
-            <span class="info-value">{selectedNodeDetails.filesystem}</span>
-          </div>
-        {/if}
-        {#if selectedNodeDetails.category}
-          <div class="info-item">
-            <span class="info-label">Category:</span>
-            <span class="info-value">{selectedNodeDetails.category}</span>
-          </div>
-        {/if}
-        {#if selectedNodeDetails.description}
-          <div class="info-item">
-            <span class="info-label">Description:</span>
-            <span class="info-value">{selectedNodeDetails.description}</span>
-          </div>
-        {/if}
-      {/if}
-      {#if selectedNode.networkName}
-        <div class="info-item">
-          <span class="info-label">Network:</span>
-          <span class="info-value">
-            <span class="network-indicator" style="background-color: {selectedNode.networkColor}"></span>
-            {selectedNode.networkName}
-          </span>
-        </div>
-      {/if}
-      {#if selectedNodeDetails && selectedNodeDetails.share_type}
-        <div class="info-item">
-          <span class="info-label">Share Type:</span>
-          <span class="info-value">{selectedNodeDetails.share_type}</span>
-        </div>
-      {/if}
-      {#if selectedNodeDetails && selectedNodeDetails.notes}
-        <div class="info-item notes">
-          <span class="info-label">Notes:</span>
-          <span class="info-value">{selectedNodeDetails.notes}</span>
-        </div>
-      {/if}
-    </div>
-    <div class="info-footer">
-      <a href="#/inventory/{selectedNode.type}" class="view-link">View in Inventory →</a>
-    </div>
+    <NodeDetails node={selectedNode} details={selectedNodeDetails} loading={loadingDetails} />
   </div>
 {/if}
 
-<div class="networks-panel">
-  <h3>Networks</h3>
+<button type="button" class="panel-toggle" aria-expanded={panelOpen} aria-controls="map-panel"
+  on:click={() => (panelOpen = !panelOpen)}>{$t("map.filters")}</button>
+
+<div class="networks-panel" id="map-panel" class:open={panelOpen}>
+  <h3>{$t("types.networks")}</h3>
   {#if networks.length > 0}
     <div class="network-list">
       {#each networks as network}
@@ -545,36 +439,36 @@
       {/each}
     </div>
   {:else}
-    <p class="empty-state">No networks configured</p>
+    <p class="empty-state">{$t("map.noNetworks")}</p>
   {/if}
   
   <div class="panel-divider"></div>
   
-  <h3>Show Inventory</h3>
+  <h3>{$t("map.showInventory")}</h3>
   <div class="toggle-list">
     <label class="toggle-option">
       <input type="checkbox" bind:checked={showHardware} />
-      <span>Hardware</span>
+      <span>{$t("types.hardware")}</span>
     </label>
     <label class="toggle-option">
       <input type="checkbox" bind:checked={showVms} />
-      <span>VMs</span>
+      <span>{$t("types.vms")}</span>
     </label>
     <label class="toggle-option">
       <input type="checkbox" bind:checked={showApps} />
-      <span>Apps</span>
+      <span>{$t("types.apps")}</span>
     </label>
     <label class="toggle-option">
       <input type="checkbox" bind:checked={showStorage} />
-      <span>Storage</span>
+      <span>{$t("types.storage")}</span>
     </label>
     <label class="toggle-option">
       <input type="checkbox" bind:checked={showShares} />
-      <span>Shares</span>
+      <span>{$t("types.shares")}</span>
     </label>
     <label class="toggle-option">
       <input type="checkbox" bind:checked={showMisc} />
-      <span>Misc</span>
+      <span>{$t("types.misc")}</span>
     </label>
   </div>
 </div>
@@ -584,19 +478,19 @@
     <svg width="24" height="24" viewBox="0 0 16 16">
       <polygon points="8,1 15,5 15,11 8,15 1,11 1,5" fill="#C5E1F5" stroke="#999" stroke-width="1"/>
     </svg>
-    <span>hardware</span>
+    <span>{$t("types.hardware")}</span>
   </div>
   <div class="legend-item">
     <svg width="24" height="24" viewBox="0 0 16 16">
       <circle cx="8" cy="8" r="7" fill="#C8E6C9" stroke="#999" stroke-width="1"/>
     </svg>
-    <span>vms</span>
+    <span>{$t("types.vms")}</span>
   </div>
   <div class="legend-item">
     <svg width="24" height="24" viewBox="0 0 16 16">
       <rect x="2" y="2" width="12" height="12" rx="2" fill="#FFE0B2" stroke="#999" stroke-width="1"/>
     </svg>
-    <span>apps</span>
+    <span>{$t("types.apps")}</span>
   </div>
   <div class="legend-item">
     <svg width="24" height="24" viewBox="0 0 16 16">
@@ -606,13 +500,13 @@
       <line x1="2" y1="3" x2="2" y2="13" stroke="#999" stroke-width="1"/>
       <line x1="14" y1="3" x2="14" y2="13" stroke="#999" stroke-width="1"/>
     </svg>
-    <span>storage</span>
+    <span>{$t("types.storage")}</span>
   </div>
   <div class="legend-item">
     <svg width="24" height="24" viewBox="0 0 16 16">
       <polygon points="8,1 15,8 8,15 1,8" fill="#E0E0E0" stroke="#999" stroke-width="1"/>
     </svg>
-    <span>misc</span>
+    <span>{$t("types.misc")}</span>
   </div>
 </div>
 
@@ -626,21 +520,21 @@
     position: absolute;
     top: 0.75rem;
     left: 0.75rem;
-    background: rgba(0, 0, 0, 0.9);
+    background: var(--hub-overlay-bg);
     padding: 0;
     border-radius: 6px;
     min-width: 280px;
     max-width: 350px;
-    color: #fff;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    color: var(--hub-overlay-color);
+    border: 1px solid var(--hub-border);
+    box-shadow: var(--hub-shadow);
   }
   .info-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 0.75rem 1rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid var(--hub-border);
   }
   .info-header h3 {
     margin: 0;
@@ -655,7 +549,7 @@
   .close-btn {
     background: transparent;
     border: none;
-    color: #999;
+    color: var(--hub-overlay-muted);
     font-size: 1.5rem;
     cursor: pointer;
     padding: 0;
@@ -668,78 +562,25 @@
     transition: all 0.2s;
   }
   .close-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: #fff;
-  }
-  .info-content {
-    padding: 1rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-  .info-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 0.9rem;
-  }
-  .info-item.notes {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.3rem;
-  }
-  .info-item.notes .info-value {
-    font-size: 0.85rem;
-    color: #ccc;
-    font-style: italic;
-  }
-  .info-label {
-    color: #999;
-    font-weight: 500;
-  }
-  .info-value {
-    color: #fff;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-  .network-indicator {
-    width: 12px;
-    height: 12px;
-    border-radius: 2px;
-    display: inline-block;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-  }
-  .info-footer {
-    padding: 0.75rem 1rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-  }
-  .view-link {
-    color: var(--pico-primary, #6366f1);
-    text-decoration: none;
-    font-size: 0.9rem;
-    font-weight: 500;
-    transition: color 0.2s;
-  }
-  .view-link:hover {
-    color: var(--pico-primary-hover, #818cf8);
+    background: var(--hub-border);
+    color: var(--hub-overlay-color);
   }
   .networks-panel {
     position: absolute;
     top: 0.75rem;
     right: 0.75rem;
-    background: rgba(0, 0, 0, 0.8);
+    background: var(--hub-overlay-bg);
     padding: 0.75rem;
     border-radius: 6px;
     min-width: 200px;
     max-width: 300px;
-    color: #fff;
+    color: var(--hub-overlay-color);
   }
   .networks-panel h3 {
     margin: 0 0 0.75rem 0;
     font-size: 0.9rem;
-    color: #ccc;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--hub-overlay-muted);
+    border-bottom: 1px solid var(--hub-border);
     padding-bottom: 0.5rem;
   }
   .network-list {
@@ -758,7 +599,7 @@
     height: 16px;
     border-radius: 3px;
     flex-shrink: 0;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid var(--hub-border);
   }
   .network-name {
     flex: 1;
@@ -766,17 +607,17 @@
   }
   .network-vlan {
     font-size: 0.75rem;
-    color: #999;
+    color: var(--hub-overlay-muted);
   }
   .empty-state {
     font-size: 0.8rem;
-    color: #999;
+    color: var(--hub-overlay-muted);
     margin: 0;
     font-style: italic;
   }
   .panel-divider {
     height: 1px;
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--hub-border);
     margin: 0.75rem 0;
   }
   .toggle-list {
@@ -791,7 +632,7 @@
     gap: 0.5rem;
     font-size: 0.85rem;
     cursor: pointer;
-    color: #ccc;
+    color: var(--hub-overlay-muted);
     margin: 0;
   }
   .toggle-option input[type="checkbox"] {
@@ -799,7 +640,7 @@
     margin: 0;
   }
   .toggle-option:hover {
-    color: #fff;
+    color: var(--hub-overlay-color);
   }
   .legend {
     position: absolute;
@@ -807,11 +648,11 @@
     left: 0.75rem;
     display: flex;
     gap: 1rem;
-    background: rgba(0, 0, 0, 0.7);
+    background: var(--hub-overlay-bg);
     padding: 0.6rem 1rem;
     border-radius: 8px;
     font-size: 0.9rem;
-    color: #ddd;
+    color: var(--hub-overlay-color);
   }
   .legend-item {
     display: flex;
@@ -823,15 +664,59 @@
   }
   .node-tooltip {
     position: absolute;
-    background: rgba(0, 0, 0, 0.9);
-    color: #fff;
+    background: var(--hub-overlay-bg);
+    color: var(--hub-overlay-color);
     padding: 0.4rem 0.7rem;
     border-radius: 4px;
     font-size: 0.85rem;
     pointer-events: none;
     z-index: 1000;
     white-space: nowrap;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    box-shadow: var(--hub-shadow);
     transform: translate(0, -50%);
+  }
+  .panel-toggle {
+    display: none;
+  }
+  @media (max-width: 700px) {
+    .panel-toggle {
+      display: block;
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      z-index: 5;
+      width: auto;
+      margin: 0;
+      padding: 0.3rem 0.8rem;
+      font-size: 0.85rem;
+    }
+    .networks-panel {
+      display: none;
+      top: 3rem;
+      right: 0.5rem;
+      left: 0.5rem;
+      max-width: none;
+      z-index: 5;
+    }
+    .networks-panel.open {
+      display: block;
+    }
+    .info-panel {
+      left: 0.5rem;
+      right: 0.5rem;
+      top: 0.5rem;
+      min-width: 0;
+      max-width: none;
+      z-index: 6;
+    }
+    .legend {
+      left: 0.5rem;
+      right: 0.5rem;
+      bottom: 0.5rem;
+      flex-wrap: wrap;
+      gap: 0.3rem 0.8rem;
+      font-size: 0.75rem;
+      padding: 0.4rem 0.6rem;
+    }
   }
 </style>

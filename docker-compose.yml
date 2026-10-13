@@ -1,9 +1,19 @@
 services:
   homelab-hub:
-    image: raidowl/homelab-hub:latest
+    build: .
+    image: homelab-hub:es
     container_name: homelab-hub
     ports:
       - "8000:8000"
+    environment:
+      # Login. Define HUB_PASSWORD in the .env file next to this one (see .env.example).
+      HUB_USERNAME: ${HUB_USERNAME:-admin}
+      HUB_PASSWORD: ${HUB_PASSWORD:?Define HUB_PASSWORD en el archivo .env}
+      # Set to "true" if you access Homelab Hub over HTTPS (reverse proxy)
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
     volumes:
       - ./data:/data
+      # Optional: import this host's Docker containers from the "Import" page.
+      # Warning: access to the Docker socket is equivalent to root on the host.
+      # - /var/run/docker.sock:/var/run/docker.sock:ro
     restart: unless-stopped

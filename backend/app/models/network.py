@@ -12,6 +12,7 @@ class Network(BaseMixin, db.Model):
     dns_servers = db.Column(db.Text)
     color = db.Column(db.Text)
     notes = db.Column(db.Text)
+    tags = db.Column(db.Text)  # Comma-separated
 
     members = db.relationship("NetworkMember", backref="network", lazy="select", cascade="all, delete-orphan")
 
